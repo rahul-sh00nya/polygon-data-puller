@@ -9,7 +9,7 @@ from dateutil import parser as date_parser
 import sys
 
 # Set up a semaphore for rate limiting
-MAX_CONCURRENT_REQUESTS = 5
+MAX_CONCURRENT_REQUESTS = 10000
 semaphore = Semaphore(MAX_CONCURRENT_REQUESTS)
 
 # --- Utility Functions ---
