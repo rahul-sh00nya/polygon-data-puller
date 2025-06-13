@@ -38,6 +38,8 @@ Each line contains a single news article related to a stock ticker.
 - `publisher` (object):
   - `name` (string): Publisher name.
   - `homepage_url` (string): Website URL.
+  - `logo_url` (string): URL of the website logo
+  - `logo_url` (string) favicon of the website
 - `title` (string): Article headline.
 - `author` (string): Author name.
 - `published_utc` (string): UTC publication time (ISO 8601).
@@ -48,7 +50,10 @@ Each line contains a single news article related to a stock ticker.
 - `description` (string): Summary or excerpt.
 - `keywords` (list[string], optional): Tags for classification.
 - `source` (string, optional): Alternate source name.
-
+- `insights` (string): The sentiment insights related to the article.
+  - `ticker` (string): The ticker corresponding to this insight
+  - `sentiment` (string): enum (positive, neutral, negative) The sentiment of the insight
+  - `sentiment_reasoning` (string): The reasoning behind the sentiment
 
 # Documentation for financials.jsonl
 
