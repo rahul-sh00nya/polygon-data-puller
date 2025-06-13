@@ -10,18 +10,20 @@ Each line contains one day's worth of candlestick data with computed indicators 
 - `low` (float): The lowest price reached during the day.
 - `close` (float): The closing price of the stock.
 - `volume` (float): The total number of shares traded.
+- `vw` (float): VWAP indicator value at the candle.
+- `n` (int): The number of transactions in which shares were traded during the candle
 
 ### Calculated Indicators
 
-- `EMA8` (float): 8-day Exponential Moving Average of close prices.
-- `EMA21` (float): 21-day EMA.
-- `EMA34` (float): 34-day EMA.
-- `SMA10` (float): 10-day Simple Moving Average.
-- `SMA20` (float): 20-day SMA.
-- `SMA50` (float): 50-day SMA.
-- `RSI` (float): 14-day Relative Strength Index.
-- `MACD` (float): MACD line (12-day EMA - 26-day EMA).
-- `MACD_signal` (float): 9-day EMA of the MACD line.
+- `EMA8` (float): 8-day Exponential Moving Average of close prices (EMA8).
+- `EMA21` (float): 21-day Exponential Moving Average of close prices(EMA21).
+- `EMA34` (float): 34-day Exponential Moving Average of close prices (EMA34).
+- `SMA10` (float): 10-day Simple Moving Average of close prices (SMA10).
+- `SMA20` (float): 20-day Simple Moving Average of close prices (SMA20).
+- `SMA50` (float): 50-day Simple Moving Average of close prices (SMA50).
+- `RSI` (float): 14-day Relative Strength Index (RSI).
+- `MACD` (float): MACD line (12-day EMA - 26-day EMA) ( MACD line ).
+- `MACD_signal` (float): 9-day EMA of the MACD line ( MACD signal line ).
 - `MACD_hist` (float): MACD - MACD_signal.
 - `ticker` (string): Stock ticker symbol.
 
