@@ -1,6 +1,6 @@
 # Documentation for candles.jsonl
 
-Each line in `candles.jsonl` contains one day's worth of candlestick data with computed indicators for a particular stock.
+Each line contains one day's worth of candlestick data with computed indicators for a particular stock.
 
 ## Fields
 
