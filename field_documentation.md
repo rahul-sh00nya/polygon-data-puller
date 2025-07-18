@@ -72,27 +72,27 @@ Each line contains financial reporting data for a company.
 
 ## Income Statement
 
-- `revenues` (float)
-- `cost_of_revenue` (float)
-- `gross_profit` (float)
-- `operating_expenses` (float)
-- `net_income` (float)
-- `eps` (float)
-- `ebitda` (float)
+- `revenues` (float): Revenue in the duration
+- `cost_of_revenue` (float): Cost of revenue in the duration
+- `gross_profit` (float): Gross profit in the duration
+- `operating_expenses` (float): Operating expenses in the duration
+- `net_income` (float): Net income in the duration
+- `eps` (float): Earnings per share in the duration
+- `ebitda` (float): EBITDA (  Earnings Before Interest, Taxes, Depreciation, and Amortization ) in the duration
 
 ## Balance Sheet
 
-- `cash_and_cash_equivalents` (float)
-- `total_assets` (float)
-- `total_liabilities` (float)
-- `shareholder_equity` (float)
+- `cash_and_cash_equivalents` (float): Cash and cash equivalents
+- `total_assets` (float): Total assets of the company  
+- `total_liabilities` (float): Total liabilities of the company
+- `shareholder_equity` (float): Shareholder equity, that is (Total Assets) − ( Total Liabilities )
 
 ## Cash Flow Statement
 
-- `operating_cash_flow` (float)
-- `investing_cash_flow` (float)
-- `financing_cash_flow` (float)
-- `free_cash_flow` (float)
+- `operating_cash_flow` (float): Operating cash flow (OCF) represents the cash a company generates from its core business operations.
+- `investing_cash_flow` (float): Investing cash flow, found on a company's cash flow statement, tracks the cash impact of a company's investments in long-term assets and securities. It essentially shows how much cash is spent on or generated from investments. This section is crucial for understanding a company's investment strategy and its impact on future growth and profitability
+- `financing_cash_flow` (float): Cash flow financing aka Financing cash flow is a form of business financing. Under these terms, a loan made to a company is backed by a company's expected cash flows. Cash flow is the amount of cash that flows in and out of a business in a specific period
+- `free_cash_flow` (float): Free cash flow (FCF) is the amount of cash that a company has left after accounting for spending on operations and capital asset maintenance. Investors and analysts rely on it as one measurement of a company's profitability
 
 
 # Documentation for yields.jsonl
