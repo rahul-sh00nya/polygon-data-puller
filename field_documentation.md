@@ -57,7 +57,7 @@ Each line contains a single news article related to a stock ticker.
 
 # Documentation for financials.jsonl
 
-Each line contains financial reporting data for a company.
+Each line contains financial reporting data for a company. The currency is all USD.
 
 ## Top-Level Fields
 
