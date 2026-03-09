@@ -49,6 +49,24 @@ FILINGS_INDEX_COLUMNS = [
     "form_type", "filing_date", "filing_url",
 ]
 
+SHORT_INTEREST_COLUMNS = [
+    "ticker", "short_interest", "settlement_date",
+    "days_to_cover", "avg_daily_volume",
+]
+
+SHORT_VOLUME_COLUMNS = [
+    "ticker", "date", "short_volume", "total_volume",
+    "short_volume_ratio", "exempt_volume", "non_exempt_volume",
+    "adf_short_volume", "adf_short_volume_exempt",
+    "nasdaq_carteret_short_volume", "nasdaq_carteret_short_volume_exempt",
+    "nasdaq_chicago_short_volume", "nasdaq_chicago_short_volume_exempt",
+    "nyse_short_volume", "nyse_short_volume_exempt",
+]
+
+FLOAT_COLUMNS = [
+    "ticker", "effective_date", "free_float", "free_float_percent",
+]
+
 # --- PostgreSQL type maps ---
 
 CANDLE_TYPES = {
@@ -119,6 +137,28 @@ FILINGS_INDEX_TYPES = {
     "accession_number": "TEXT", "cik": "TEXT", "ticker": "TEXT",
     "issuer_name": "TEXT", "form_type": "TEXT",
     "filing_date": "DATE", "filing_url": "TEXT",
+}
+
+SHORT_INTEREST_TYPES = {
+    "ticker": "TEXT", "short_interest": "BIGINT",
+    "settlement_date": "DATE", "days_to_cover": "DOUBLE PRECISION",
+    "avg_daily_volume": "BIGINT",
+}
+
+SHORT_VOLUME_TYPES = {
+    "ticker": "TEXT", "date": "DATE",
+    "short_volume": "DOUBLE PRECISION", "total_volume": "DOUBLE PRECISION",
+    "short_volume_ratio": "DOUBLE PRECISION",
+    "exempt_volume": "DOUBLE PRECISION", "non_exempt_volume": "DOUBLE PRECISION",
+    "adf_short_volume": "BIGINT", "adf_short_volume_exempt": "BIGINT",
+    "nasdaq_carteret_short_volume": "BIGINT", "nasdaq_carteret_short_volume_exempt": "BIGINT",
+    "nasdaq_chicago_short_volume": "BIGINT", "nasdaq_chicago_short_volume_exempt": "BIGINT",
+    "nyse_short_volume": "BIGINT", "nyse_short_volume_exempt": "BIGINT",
+}
+
+FLOAT_TYPES = {
+    "ticker": "TEXT", "effective_date": "DATE",
+    "free_float": "BIGINT", "free_float_percent": "DOUBLE PRECISION",
 }
 
 
@@ -196,19 +236,24 @@ async def fetch_json(url, session, params=None, max_retries=3):
     for attempt in range(max_retries):
         await rate_limiter.acquire()
         tqdm.write(f"  GET {url}")
-        async with session.get(url, params=params) as response:
-            if response.status == 429:
-                wait = 60 * (attempt + 1)
-                tqdm.write(f"  429 Too Many Requests — retrying {url} in {wait}s (attempt {attempt + 1}/{max_retries})")
-                await asyncio.sleep(wait)
-                continue
-            if response.status != 200:
-                tqdm.write(f"  {response.status} {response.reason} — skipping {url}")
-                return {"results": []}
-            data = await response.json()
-            count = len(data.get("results", data.get("data", [])))
-            tqdm.write(f"  {response.status} OK ({count} results)")
-            return data
+        try:
+            async with session.get(url, params=params) as response:
+                if response.status == 429:
+                    wait = 60 * (attempt + 1)
+                    tqdm.write(f"  429 Too Many Requests — retrying {url} in {wait}s (attempt {attempt + 1}/{max_retries})")
+                    await asyncio.sleep(wait)
+                    continue
+                if response.status != 200:
+                    tqdm.write(f"  {response.status} {response.reason} — skipping {url}")
+                    return {"results": []}
+                data = await response.json()
+                count = len(data.get("results", data.get("data", [])))
+                tqdm.write(f"  {response.status} OK ({count} results)")
+                return data
+        except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+            wait = 30 * (attempt + 1)
+            tqdm.write(f"  {type(e).__name__} — retrying {url} in {wait}s (attempt {attempt + 1}/{max_retries})")
+            await asyncio.sleep(wait)
     tqdm.write(f"  Failed after {max_retries} retries — skipping {url}")
     return {"results": []}
 
@@ -287,6 +332,24 @@ async def fetch_risk_factors_taxonomy(api_key, session):
 
 async def fetch_filings_index(api_key, ticker, session):
     url = f"{API_BASE_URL}/stocks/filings/vX/index"
+    params = {"apiKey": api_key, "ticker": ticker, "limit": 50000}
+    return await fetch_json_paginated(url, session, params)
+
+
+async def fetch_short_interest(api_key, ticker, session):
+    url = f"{API_BASE_URL}/stocks/v1/short-interest"
+    params = {"apiKey": api_key, "ticker": ticker, "limit": 50000}
+    return await fetch_json_paginated(url, session, params)
+
+
+async def fetch_short_volume(api_key, ticker, session):
+    url = f"{API_BASE_URL}/stocks/v1/short-volume"
+    params = {"apiKey": api_key, "ticker": ticker, "limit": 50000}
+    return await fetch_json_paginated(url, session, params)
+
+
+async def fetch_float(api_key, ticker, session):
+    url = f"{API_BASE_URL}/stocks/vX/float"
     params = {"apiKey": api_key, "ticker": ticker, "limit": 50000}
     return await fetch_json_paginated(url, session, params)
 
@@ -431,6 +494,39 @@ def write_filings_index_csv(all_results, filename="filings_index.csv"):
     print(f"Wrote {len(flat)} rows to {filename}")
 
 
+def write_short_interest_csv(all_results, filename="short_interest.csv"):
+    flat = [r for result_list in all_results for r in result_list]
+    if not flat:
+        return
+    with open(filename, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=SHORT_INTEREST_COLUMNS, restval="", extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(flat)
+    print(f"Wrote {len(flat)} rows to {filename}")
+
+
+def write_short_volume_csv(all_results, filename="short_volume.csv"):
+    flat = [r for result_list in all_results for r in result_list]
+    if not flat:
+        return
+    with open(filename, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=SHORT_VOLUME_COLUMNS, restval="", extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(flat)
+    print(f"Wrote {len(flat)} rows to {filename}")
+
+
+def write_float_csv(all_results, filename="float.csv"):
+    flat = [r for result_list in all_results for r in result_list]
+    if not flat:
+        return
+    with open(filename, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=FLOAT_COLUMNS, restval="", extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(flat)
+    print(f"Wrote {len(flat)} rows to {filename}")
+
+
 # --- SQL Generator ---
 
 def generate_sql_file(table_name, column_types, indexes, csv_file, sql_file):
@@ -485,6 +581,15 @@ SQL_TABLE_CONFIGS = {
     "filings_index": [
         ("filings_index", FILINGS_INDEX_TYPES, [("idx_filings_index_ticker_filing_date", ["ticker", "filing_date"]), ("idx_filings_index_form_type", ["form_type"])]),
     ],
+    "short_interest": [
+        ("short_interest", SHORT_INTEREST_TYPES, [("idx_short_interest_ticker_date", ["ticker", "settlement_date"])]),
+    ],
+    "short_volume": [
+        ("short_volume", SHORT_VOLUME_TYPES, [("idx_short_volume_ticker_date", ["ticker", "date"])]),
+    ],
+    "float": [
+        ("float", FLOAT_TYPES, [("idx_float_ticker_date", ["ticker", "effective_date"])]),
+    ],
 }
 
 
@@ -530,6 +635,15 @@ async def fetch_all_data(api_key, start_date, stocks, endpoints):
         if "filings_index" in endpoints:
             tasks = [fetch_filings_index(api_key, s, session) for s in stocks]
             results["filings_index"] = await gather_with_progress(tasks, "Filings index")
+        if "short_interest" in endpoints:
+            tasks = [fetch_short_interest(api_key, s, session) for s in stocks]
+            results["short_interest"] = await gather_with_progress(tasks, "Short interest")
+        if "short_volume" in endpoints:
+            tasks = [fetch_short_volume(api_key, s, session) for s in stocks]
+            results["short_volume"] = await gather_with_progress(tasks, "Short volume")
+        if "float" in endpoints:
+            tasks = [fetch_float(api_key, s, session) for s in stocks]
+            results["float"] = await gather_with_progress(tasks, "Float")
         if "treasury_yields" in endpoints:
             tqdm.write("\nFetching treasury yields...")
             results["treasury_yields"] = await fetch_treasury_yields(api_key, session)
@@ -556,14 +670,20 @@ def write_all_csv(results, endpoints):
         write_risk_factors_taxonomy_csv(results.get("risk_factors_taxonomy", []))
     if "filings_index" in endpoints:
         write_filings_index_csv(results.get("filings_index", []))
+    if "short_interest" in endpoints:
+        write_short_interest_csv(results.get("short_interest", []))
+    if "short_volume" in endpoints:
+        write_short_volume_csv(results.get("short_volume", []))
+    if "float" in endpoints:
+        write_float_csv(results.get("float", []))
 
 
 async def main(api_key, start_date, stocks, endpoints):
-    per_stock_endpoints = ["candles", "news", "ten_k_sections", "eight_k_text", "risk_factors", "filings_index"]
+    per_stock_endpoints = ["candles", "news", "ten_k_sections", "eight_k_text", "risk_factors", "filings_index", "short_interest", "short_volume", "float"]
     single_call_endpoints = ["treasury_yields", "risk_factors_taxonomy"]
     per_stock = sum(1 for e in per_stock_endpoints if e in endpoints)
     single_calls = sum(1 for e in single_call_endpoints if e in endpoints)
-    paginated = any(e in endpoints for e in ["ten_k_sections", "eight_k_text", "risk_factors", "risk_factors_taxonomy", "filings_index"])
+    paginated = any(e in endpoints for e in ["ten_k_sections", "eight_k_text", "risk_factors", "risk_factors_taxonomy", "filings_index", "short_interest", "short_volume", "float"])
     total_api_calls = per_stock * len(stocks) + single_calls
     prefix = "~" if paginated else ""
     print(f"Fetching data for {len(stocks)} stock(s): {', '.join(stocks)}")
@@ -590,7 +710,8 @@ def cli():
         "candles", "news", "treasury_yields",
         "ten_k_sections", "eight_k_text",
         "risk_factors", "risk_factors_taxonomy",
-        "filings_index",
+        "filings_index", "short_interest",
+        "short_volume", "float",
     ]
     parser.add_argument(
         "--endpoints", nargs="+", default=all_endpoints,

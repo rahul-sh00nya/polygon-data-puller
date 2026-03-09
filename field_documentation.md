@@ -355,3 +355,60 @@ Each row contains metadata for one SEC filing from the EDGAR master index. Fetch
 | `form_type` | TEXT | SEC form type (10-K, 10-Q, 8-K, S-1, 4, etc.) |
 | `filing_date` | DATE | Date the filing was submitted |
 | `filing_url` | TEXT | Direct link to the SEC EDGAR filing document |
+
+---
+
+# short_interest.csv
+
+Each row contains short interest data for a stock on a given settlement date. Fetched from `/stocks/v1/short-interest`.
+
+## Fields
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `ticker` | TEXT | Stock ticker symbol |
+| `short_interest` | BIGINT | Total number of shares sold short but not yet covered |
+| `settlement_date` | DATE | Reporting/settlement date |
+| `days_to_cover` | DOUBLE PRECISION | Estimated number of days to cover all short positions (short interest / avg daily volume) |
+| `avg_daily_volume` | BIGINT | Average daily trading volume used in the days-to-cover calculation |
+
+---
+
+# short_volume.csv
+
+Each row contains daily short volume data for a stock broken down by trading venue. Fetched from `/stocks/v1/short-volume`.
+
+## Fields
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `ticker` | TEXT | Stock ticker symbol |
+| `date` | DATE | Trade date |
+| `short_volume` | DOUBLE PRECISION | Total shares sold short across all venues |
+| `total_volume` | DOUBLE PRECISION | Total reported volume across all venues |
+| `short_volume_ratio` | DOUBLE PRECISION | Percentage of total volume that was sold short |
+| `exempt_volume` | DOUBLE PRECISION | Short volume exempt from Regulation SHO |
+| `non_exempt_volume` | DOUBLE PRECISION | Short volume subject to Regulation SHO |
+| `adf_short_volume` | BIGINT | ADF short volume (non-exempt) |
+| `adf_short_volume_exempt` | BIGINT | ADF short volume (exempt) |
+| `nasdaq_carteret_short_volume` | BIGINT | Nasdaq Carteret short volume (non-exempt) |
+| `nasdaq_carteret_short_volume_exempt` | BIGINT | Nasdaq Carteret short volume (exempt) |
+| `nasdaq_chicago_short_volume` | BIGINT | Nasdaq Chicago short volume (non-exempt) |
+| `nasdaq_chicago_short_volume_exempt` | BIGINT | Nasdaq Chicago short volume (exempt) |
+| `nyse_short_volume` | BIGINT | NYSE short volume (non-exempt) |
+| `nyse_short_volume_exempt` | BIGINT | NYSE short volume (exempt) |
+
+---
+
+# float.csv
+
+Each row contains the free float data for a stock on a given effective date. Fetched from `/stocks/vX/float`.
+
+## Fields
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `ticker` | TEXT | Stock ticker symbol |
+| `effective_date` | DATE | Effective date of the free float measurement |
+| `free_float` | BIGINT | Number of shares available for public trading (excludes strategic holdings and insiders) |
+| `free_float_percent` | DOUBLE PRECISION | Percentage of total shares outstanding available for public trading |
