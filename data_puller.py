@@ -44,6 +44,11 @@ RISK_FACTORS_TAXONOMY_COLUMNS = [
     "tertiary_category", "description",
 ]
 
+FILINGS_INDEX_COLUMNS = [
+    "accession_number", "cik", "ticker", "issuer_name",
+    "form_type", "filing_date", "filing_url",
+]
+
 # --- PostgreSQL type maps ---
 
 CANDLE_TYPES = {
@@ -108,6 +113,12 @@ RISK_FACTORS_TAXONOMY_TYPES = {
     "taxonomy": "TEXT", "primary_category": "TEXT",
     "secondary_category": "TEXT",
     "tertiary_category": "TEXT", "description": "TEXT",
+}
+
+FILINGS_INDEX_TYPES = {
+    "accession_number": "TEXT", "cik": "TEXT", "ticker": "TEXT",
+    "issuer_name": "TEXT", "form_type": "TEXT",
+    "filing_date": "DATE", "filing_url": "TEXT",
 }
 
 
@@ -274,6 +285,12 @@ async def fetch_risk_factors_taxonomy(api_key, session):
     return await fetch_json_paginated(url, session, params)
 
 
+async def fetch_filings_index(api_key, ticker, session):
+    url = f"{API_BASE_URL}/stocks/filings/vX/index"
+    params = {"apiKey": api_key, "ticker": ticker, "limit": 50000}
+    return await fetch_json_paginated(url, session, params)
+
+
 # --- CSV Writers ---
 
 def write_candles_csv(all_records, filename="candles.csv"):
@@ -403,6 +420,17 @@ def write_risk_factors_taxonomy_csv(records, filename="risk_factors_taxonomy.csv
     print(f"Wrote {len(records)} rows to {filename}")
 
 
+def write_filings_index_csv(all_results, filename="filings_index.csv"):
+    flat = [r for result_list in all_results for r in result_list]
+    if not flat:
+        return
+    with open(filename, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=FILINGS_INDEX_COLUMNS, restval="", extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(flat)
+    print(f"Wrote {len(flat)} rows to {filename}")
+
+
 # --- SQL Generator ---
 
 def generate_sql_file(table_name, column_types, indexes, csv_file, sql_file):
@@ -454,6 +482,9 @@ SQL_TABLE_CONFIGS = {
     "risk_factors_taxonomy": [
         ("risk_factors_taxonomy", RISK_FACTORS_TAXONOMY_TYPES, [("idx_risk_factors_taxonomy_taxonomy_category", ["taxonomy", "primary_category"])]),
     ],
+    "filings_index": [
+        ("filings_index", FILINGS_INDEX_TYPES, [("idx_filings_index_ticker_filing_date", ["ticker", "filing_date"]), ("idx_filings_index_form_type", ["form_type"])]),
+    ],
 }
 
 
@@ -496,6 +527,9 @@ async def fetch_all_data(api_key, start_date, stocks, endpoints):
         if "risk_factors" in endpoints:
             tasks = [fetch_risk_factors(api_key, s, session) for s in stocks]
             results["risk_factors"] = await gather_with_progress(tasks, "Risk factors")
+        if "filings_index" in endpoints:
+            tasks = [fetch_filings_index(api_key, s, session) for s in stocks]
+            results["filings_index"] = await gather_with_progress(tasks, "Filings index")
         if "treasury_yields" in endpoints:
             tqdm.write("\nFetching treasury yields...")
             results["treasury_yields"] = await fetch_treasury_yields(api_key, session)
@@ -520,14 +554,16 @@ def write_all_csv(results, endpoints):
         write_risk_factors_csv(results.get("risk_factors", []))
     if "risk_factors_taxonomy" in endpoints:
         write_risk_factors_taxonomy_csv(results.get("risk_factors_taxonomy", []))
+    if "filings_index" in endpoints:
+        write_filings_index_csv(results.get("filings_index", []))
 
 
 async def main(api_key, start_date, stocks, endpoints):
-    per_stock_endpoints = ["candles", "news", "ten_k_sections", "eight_k_text", "risk_factors"]
+    per_stock_endpoints = ["candles", "news", "ten_k_sections", "eight_k_text", "risk_factors", "filings_index"]
     single_call_endpoints = ["treasury_yields", "risk_factors_taxonomy"]
     per_stock = sum(1 for e in per_stock_endpoints if e in endpoints)
     single_calls = sum(1 for e in single_call_endpoints if e in endpoints)
-    paginated = any(e in endpoints for e in ["ten_k_sections", "eight_k_text", "risk_factors", "risk_factors_taxonomy"])
+    paginated = any(e in endpoints for e in ["ten_k_sections", "eight_k_text", "risk_factors", "risk_factors_taxonomy", "filings_index"])
     total_api_calls = per_stock * len(stocks) + single_calls
     prefix = "~" if paginated else ""
     print(f"Fetching data for {len(stocks)} stock(s): {', '.join(stocks)}")
@@ -554,11 +590,12 @@ def cli():
         "candles", "news", "treasury_yields",
         "ten_k_sections", "eight_k_text",
         "risk_factors", "risk_factors_taxonomy",
+        "filings_index",
     ]
     parser.add_argument(
-        "--endpoints", nargs="+", default=["candles", "news", "treasury_yields"],
+        "--endpoints", nargs="+", default=all_endpoints,
         choices=all_endpoints,
-        help="Endpoints to fetch (default: candles news treasury_yields)",
+        help="Endpoints to fetch (default: all)",
     )
 
     if len(sys.argv) == 1:

@@ -267,3 +267,91 @@ Each row contains daily U.S. Treasury yield curve rates.
 | `yield_10_year` | DOUBLE PRECISION | 10-year Treasury yield (%) |
 | `yield_20_year` | DOUBLE PRECISION | 20-year Treasury yield (%) |
 | `yield_30_year` | DOUBLE PRECISION | 30-year Treasury yield (%) |
+
+---
+
+# ten_k_sections.csv
+
+Each row contains one section of text from a 10-K annual filing for a company. Fetched from `/stocks/filings/10-K/vX/sections`.
+
+## Fields
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `cik` | TEXT | SEC Central Index Key |
+| `ticker` | TEXT | Stock ticker symbol |
+| `filing_date` | DATE | Date the filing was submitted |
+| `period_end` | DATE | End date of the reporting period |
+| `section` | TEXT | Section identifier within the 10-K (e.g. Item 1, Item 1A, Item 7, etc.) |
+| `filing_url` | TEXT | Direct link to the SEC EDGAR filing document |
+| `text` | TEXT | Full text content of the section |
+
+---
+
+# eight_k_text.csv
+
+Each row contains the text content of an 8-K current report filing for a company. Fetched from `/stocks/filings/8-K/vX/text`.
+
+## Fields
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `accession_number` | TEXT | Unique SEC filing identifier (e.g. `0000320193-25-000079`) |
+| `cik` | TEXT | SEC Central Index Key |
+| `ticker` | TEXT | Stock ticker symbol |
+| `filing_date` | DATE | Date the filing was submitted |
+| `form_type` | TEXT | SEC form type (e.g. `8-K`, `8-K/A`) |
+| `filing_url` | TEXT | Direct link to the SEC EDGAR filing document |
+| `items_text` | TEXT | Combined text content of all items in the 8-K filing |
+
+---
+
+# risk_factors.csv
+
+Each row contains one categorized risk factor extracted from SEC filings for a company. Fetched from `/stocks/filings/vX/risk-factors`.
+
+## Fields
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `cik` | TEXT | SEC Central Index Key |
+| `ticker` | TEXT | Stock ticker symbol |
+| `filing_date` | DATE | Date the filing was submitted |
+| `primary_category` | TEXT | Top-level risk category |
+| `secondary_category` | TEXT | Mid-level risk sub-category |
+| `tertiary_category` | TEXT | Most specific risk sub-category |
+| `supporting_text` | TEXT | Excerpt from the filing supporting the risk classification |
+
+---
+
+# risk_factors_taxonomy.csv
+
+Each row defines one entry in the risk factors taxonomy hierarchy. Fetched from `/stocks/taxonomies/vX/risk-factors`. This is a single global call, not per-ticker.
+
+## Fields
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `taxonomy` | TEXT | Taxonomy name/version |
+| `primary_category` | TEXT | Top-level risk category |
+| `secondary_category` | TEXT | Mid-level risk sub-category |
+| `tertiary_category` | TEXT | Most specific risk sub-category |
+| `description` | TEXT | Description of what this category covers |
+
+---
+
+# filings_index.csv
+
+Each row contains metadata for one SEC filing from the EDGAR master index. Fetched from `/stocks/filings/vX/index`.
+
+## Fields
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `accession_number` | TEXT | Unique SEC filing identifier (e.g. `0000320193-25-000079`) |
+| `cik` | TEXT | SEC Central Index Key |
+| `ticker` | TEXT | Stock ticker symbol (may be empty if unavailable) |
+| `issuer_name` | TEXT | Filing entity name |
+| `form_type` | TEXT | SEC form type (10-K, 10-Q, 8-K, S-1, 4, etc.) |
+| `filing_date` | DATE | Date the filing was submitted |
+| `filing_url` | TEXT | Direct link to the SEC EDGAR filing document |
