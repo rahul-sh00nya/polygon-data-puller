@@ -62,7 +62,8 @@ for sql_file in "$SCRIPT_DIR"/*.sql; do
   fname="$(basename "$sql_file")"
   output=$($PSQL_DB -f "$sql_file" 2>&1)
   # Extract row count from COPY output (e.g. "COPY 591070")
-  rows=$(echo "$output" | grep -oP '(?<=COPY )\d+' || echo "0")
+  rows=$(echo "$output" | sed -n 's/^COPY \([0-9]*\)$/\1/p')
+  rows=${rows:-0}
   echo "    $fname — $rows rows"
   LOADED=$((LOADED + 1))
   TOTAL_ROWS=$((TOTAL_ROWS + rows))
