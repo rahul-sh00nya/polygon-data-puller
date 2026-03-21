@@ -67,6 +67,21 @@ FLOAT_COLUMNS = [
     "ticker", "effective_date", "free_float", "free_float_percent",
 ]
 
+INFLATION_COLUMNS = [
+    "date", "cpi", "cpi_core", "cpi_year_over_year",
+    "pce", "pce_core", "pce_spending",
+]
+
+INFLATION_EXPECTATIONS_COLUMNS = [
+    "date", "market_5_year", "market_10_year", "forward_years_5_to_10",
+    "model_1_year", "model_5_year", "model_10_year", "model_30_year",
+]
+
+LABOR_MARKET_COLUMNS = [
+    "date", "unemployment_rate", "labor_force_participation_rate",
+    "avg_hourly_earnings", "job_openings",
+]
+
 # --- PostgreSQL type maps ---
 
 CANDLE_TYPES = {
@@ -159,6 +174,25 @@ SHORT_VOLUME_TYPES = {
 FLOAT_TYPES = {
     "ticker": "TEXT", "effective_date": "DATE",
     "free_float": "BIGINT", "free_float_percent": "DOUBLE PRECISION",
+}
+
+INFLATION_TYPES = {
+    "date": "DATE", "cpi": "DOUBLE PRECISION", "cpi_core": "DOUBLE PRECISION",
+    "cpi_year_over_year": "DOUBLE PRECISION", "pce": "DOUBLE PRECISION",
+    "pce_core": "DOUBLE PRECISION", "pce_spending": "DOUBLE PRECISION",
+}
+
+INFLATION_EXPECTATIONS_TYPES = {
+    "date": "DATE", "market_5_year": "DOUBLE PRECISION",
+    "market_10_year": "DOUBLE PRECISION", "forward_years_5_to_10": "DOUBLE PRECISION",
+    "model_1_year": "DOUBLE PRECISION", "model_5_year": "DOUBLE PRECISION",
+    "model_10_year": "DOUBLE PRECISION", "model_30_year": "DOUBLE PRECISION",
+}
+
+LABOR_MARKET_TYPES = {
+    "date": "DATE", "unemployment_rate": "DOUBLE PRECISION",
+    "labor_force_participation_rate": "DOUBLE PRECISION",
+    "avg_hourly_earnings": "DOUBLE PRECISION", "job_openings": "DOUBLE PRECISION",
 }
 
 
@@ -354,6 +388,24 @@ async def fetch_float(api_key, ticker, session):
     return await fetch_json_paginated(url, session, params)
 
 
+async def fetch_inflation(api_key, session):
+    url = f"{API_BASE_URL}/fed/v1/inflation"
+    params = {"apiKey": api_key, "limit": 999}
+    return await fetch_json_paginated(url, session, params)
+
+
+async def fetch_inflation_expectations(api_key, session):
+    url = f"{API_BASE_URL}/fed/v1/inflation-expectations"
+    params = {"apiKey": api_key, "limit": 999}
+    return await fetch_json_paginated(url, session, params)
+
+
+async def fetch_labor_market(api_key, session):
+    url = f"{API_BASE_URL}/fed/v1/labor-market"
+    params = {"apiKey": api_key, "limit": 999}
+    return await fetch_json_paginated(url, session, params)
+
+
 # --- CSV Writers ---
 
 def write_candles_csv(all_records, filename="candles.csv"):
@@ -527,6 +579,18 @@ def write_float_csv(all_results, filename="float.csv"):
     print(f"Wrote {len(flat)} rows to {filename}")
 
 
+def write_inflation_csv(records, filename="inflation.csv"):
+    write_rows_csv(records, INFLATION_COLUMNS, filename)
+
+
+def write_inflation_expectations_csv(records, filename="inflation_expectations.csv"):
+    write_rows_csv(records, INFLATION_EXPECTATIONS_COLUMNS, filename)
+
+
+def write_labor_market_csv(records, filename="labor_market.csv"):
+    write_rows_csv(records, LABOR_MARKET_COLUMNS, filename)
+
+
 # --- SQL Generator ---
 
 def generate_sql_file(table_name, column_types, indexes, csv_file, sql_file):
@@ -590,6 +654,15 @@ SQL_TABLE_CONFIGS = {
     "float": [
         ("float", FLOAT_TYPES, [("idx_float_ticker_date", ["ticker", "effective_date"])]),
     ],
+    "inflation": [
+        ("inflation", INFLATION_TYPES, [("idx_inflation_date", ["date"])]),
+    ],
+    "inflation_expectations": [
+        ("inflation_expectations", INFLATION_EXPECTATIONS_TYPES, [("idx_inflation_expectations_date", ["date"])]),
+    ],
+    "labor_market": [
+        ("labor_market", LABOR_MARKET_TYPES, [("idx_labor_market_date", ["date"])]),
+    ],
 }
 
 
@@ -650,6 +723,15 @@ async def fetch_all_data(api_key, start_date, stocks, endpoints):
         if "risk_factors_taxonomy" in endpoints:
             tqdm.write("\nFetching risk factors taxonomy...")
             results["risk_factors_taxonomy"] = await fetch_risk_factors_taxonomy(api_key, session)
+        if "inflation" in endpoints:
+            tqdm.write("\nFetching inflation...")
+            results["inflation"] = await fetch_inflation(api_key, session)
+        if "inflation_expectations" in endpoints:
+            tqdm.write("\nFetching inflation expectations...")
+            results["inflation_expectations"] = await fetch_inflation_expectations(api_key, session)
+        if "labor_market" in endpoints:
+            tqdm.write("\nFetching labor market...")
+            results["labor_market"] = await fetch_labor_market(api_key, session)
     return results
 
 
@@ -676,14 +758,20 @@ def write_all_csv(results, endpoints):
         write_short_volume_csv(results.get("short_volume", []))
     if "float" in endpoints:
         write_float_csv(results.get("float", []))
+    if "inflation" in endpoints:
+        write_inflation_csv(results.get("inflation", []))
+    if "inflation_expectations" in endpoints:
+        write_inflation_expectations_csv(results.get("inflation_expectations", []))
+    if "labor_market" in endpoints:
+        write_labor_market_csv(results.get("labor_market", []))
 
 
 async def main(api_key, start_date, stocks, endpoints):
     per_stock_endpoints = ["candles", "news", "ten_k_sections", "eight_k_text", "risk_factors", "filings_index", "short_interest", "short_volume", "float"]
-    single_call_endpoints = ["treasury_yields", "risk_factors_taxonomy"]
+    single_call_endpoints = ["treasury_yields", "risk_factors_taxonomy", "inflation", "inflation_expectations", "labor_market"]
     per_stock = sum(1 for e in per_stock_endpoints if e in endpoints)
     single_calls = sum(1 for e in single_call_endpoints if e in endpoints)
-    paginated = any(e in endpoints for e in ["ten_k_sections", "eight_k_text", "risk_factors", "risk_factors_taxonomy", "filings_index", "short_interest", "short_volume", "float"])
+    paginated = any(e in endpoints for e in ["ten_k_sections", "eight_k_text", "risk_factors", "risk_factors_taxonomy", "filings_index", "short_interest", "short_volume", "float", "inflation", "inflation_expectations", "labor_market"])
     total_api_calls = per_stock * len(stocks) + single_calls
     prefix = "~" if paginated else ""
     print(f"Fetching data for {len(stocks)} stock(s): {', '.join(stocks)}")
@@ -712,6 +800,8 @@ def cli():
         "risk_factors", "risk_factors_taxonomy",
         "filings_index", "short_interest",
         "short_volume", "float",
+        "inflation", "inflation_expectations",
+        "labor_market",
     ]
     parser.add_argument(
         "--endpoints", nargs="+", default=all_endpoints,

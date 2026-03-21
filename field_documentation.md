@@ -412,3 +412,56 @@ Each row contains the free float data for a stock on a given effective date. Fet
 | `effective_date` | DATE | Effective date of the free float measurement |
 | `free_float` | BIGINT | Number of shares available for public trading (excludes strategic holdings and insiders) |
 | `free_float_percent` | DOUBLE PRECISION | Percentage of total shares outstanding available for public trading |
+
+---
+
+# inflation.csv
+
+Each row contains monthly U.S. inflation data including CPI and PCE measures. Fetched from `/fed/v1/inflation`. This is a single global call, not per-ticker.
+
+## Fields
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `date` | DATE | Observation date |
+| `cpi` | DOUBLE PRECISION | Consumer Price Index |
+| `cpi_core` | DOUBLE PRECISION | Core CPI (excludes food and energy) |
+| `cpi_year_over_year` | DOUBLE PRECISION | CPI year-over-year change (%) |
+| `pce` | DOUBLE PRECISION | Personal Consumption Expenditures price index |
+| `pce_core` | DOUBLE PRECISION | Core PCE (excludes food and energy) |
+| `pce_spending` | DOUBLE PRECISION | PCE spending level |
+
+---
+
+# inflation_expectations.csv
+
+Each row contains inflation expectations data from market-based and model-based measures. Fetched from `/fed/v1/inflation-expectations`. This is a single global call, not per-ticker.
+
+## Fields
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `date` | DATE | Observation date |
+| `market_5_year` | DOUBLE PRECISION | Market-based 5-year inflation expectation (%) |
+| `market_10_year` | DOUBLE PRECISION | Market-based 10-year inflation expectation (%) |
+| `forward_years_5_to_10` | DOUBLE PRECISION | Forward 5-to-10-year inflation expectation (%) |
+| `model_1_year` | DOUBLE PRECISION | Model-based 1-year inflation expectation (%) |
+| `model_5_year` | DOUBLE PRECISION | Model-based 5-year inflation expectation (%) |
+| `model_10_year` | DOUBLE PRECISION | Model-based 10-year inflation expectation (%) |
+| `model_30_year` | DOUBLE PRECISION | Model-based 30-year inflation expectation (%) |
+
+---
+
+# labor_market.csv
+
+Each row contains U.S. labor market data. Fetched from `/fed/v1/labor-market`. This is a single global call, not per-ticker.
+
+## Fields
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `date` | DATE | Observation date |
+| `unemployment_rate` | DOUBLE PRECISION | Unemployment rate (%) |
+| `labor_force_participation_rate` | DOUBLE PRECISION | Labor force participation rate (%) |
+| `avg_hourly_earnings` | DOUBLE PRECISION | Average hourly earnings ($) |
+| `job_openings` | DOUBLE PRECISION | Number of job openings |
