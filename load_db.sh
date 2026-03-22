@@ -2,46 +2,29 @@
 set -euo pipefail
 
 # ── Usage ──────────────────────────────────────────────────────────────
-# ./load_db.sh -h <host> -p <port> -U <user> [-d <dbname>] [-W]
+# ./load_db.sh [-c <connection_uri>]
 #
-# Defaults: host=localhost, port=5432, user=test, dbname=stock_data
-# Pass -W to be prompted for a password.
+# Default: connects to Neon remote PostgreSQL (stock_data database).
+# Override with -c to use a different connection URI.
 # ───────────────────────────────────────────────────────────────────────
 
-DB_HOST="localhost"
-DB_PORT="5432"
-DB_USER="test"
-DB_NAME="stock_data"
-PW_FLAG=""
+DATABASE_URL='postgresql://username:password@hostname/database_name?sslmode=require&channel_binding=require'
 
-while getopts "h:p:U:d:W" opt; do
+while getopts "c:" opt; do
   case $opt in
-    h) DB_HOST="$OPTARG" ;;
-    p) DB_PORT="$OPTARG" ;;
-    U) DB_USER="$OPTARG" ;;
-    d) DB_NAME="$OPTARG" ;;
-    W) PW_FLAG="-W" ;;
-    *) echo "Usage: $0 [-h host] [-p port] [-U user] [-d dbname] [-W]" >&2; exit 1 ;;
+    c) DATABASE_URL="$OPTARG" ;;
+    *) echo "Usage: $0 [-c connection_uri]" >&2; exit 1 ;;
   esac
 done
 
-PSQL="psql -h $DB_HOST -p $DB_PORT -U $DB_USER $PW_FLAG"
+PSQL="psql"
+PSQL_DB="$PSQL $DATABASE_URL"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-echo "==> Connecting to PostgreSQL at $DB_HOST:$DB_PORT as $DB_USER"
-
-# ── Create database if it does not exist ───────────────────────────────
-if $PSQL -lqt | cut -d\| -f1 | grep -qw "$DB_NAME"; then
-  echo "==> Database '$DB_NAME' already exists"
-else
-  echo "==> Creating database '$DB_NAME'"
-  $PSQL -d postgres -c "CREATE DATABASE $DB_NAME;"
-fi
-
-PSQL_DB="$PSQL -d $DB_NAME"
+echo "==> Connecting to remote PostgreSQL"
 
 # ── Drop all tables in the public schema ───────────────────────────────
-echo "==> Dropping all tables in '$DB_NAME'"
+echo "==> Dropping all tables"
 TABLES=$($PSQL_DB -t -A -c \
   "SELECT string_agg(tablename, ', ') FROM pg_tables WHERE schemaname = 'public';")
 
@@ -53,20 +36,30 @@ else
 fi
 
 # ── Run every .sql file in the script's directory ──────────────────────
+# cd so that relative CSV paths in \COPY commands resolve correctly
+cd "$SCRIPT_DIR"
 echo "==> Loading SQL files from $SCRIPT_DIR"
 LOADED=0
+FAILED=0
 TOTAL_ROWS=0
 
 for sql_file in "$SCRIPT_DIR"/*.sql; do
   [ -f "$sql_file" ] || continue
   fname="$(basename "$sql_file")"
-  output=$($PSQL_DB -f "$sql_file" 2>&1)
-  # Extract row count from COPY output (e.g. "COPY 591070")
-  rows=$(echo "$output" | sed -n 's/^COPY \([0-9]*\)$/\1/p')
-  rows=${rows:-0}
-  echo "    $fname — $rows rows"
-  LOADED=$((LOADED + 1))
-  TOTAL_ROWS=$((TOTAL_ROWS + rows))
+  if output=$($PSQL_DB -f "$sql_file" 2>&1); then
+    rows=$(echo "$output" | sed -n 's/^COPY \([0-9]*\)$/\1/p')
+    rows=${rows:-0}
+    echo "    $fname — $rows rows"
+    LOADED=$((LOADED + 1))
+    TOTAL_ROWS=$((TOTAL_ROWS + rows))
+  else
+    echo "    $fname — FAILED"
+    echo "$output" | sed 's/^/      /'
+    FAILED=$((FAILED + 1))
+  fi
 done
 
-echo "==> Done: $LOADED files loaded, $TOTAL_ROWS total rows"
+echo "==> Done: $LOADED files loaded, $FAILED failed, $TOTAL_ROWS total rows"
+if [ "$FAILED" -gt 0 ]; then
+  exit 1
+fi

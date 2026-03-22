@@ -593,6 +593,26 @@ def write_labor_market_csv(records, filename="labor_market.csv"):
 
 # --- SQL Generator ---
 
+csv.field_size_limit(sys.maxsize)
+
+
+def _sql_escape(value, col_type):
+    """Escape a single value for a PostgreSQL INSERT statement."""
+    if value is None or value == "":
+        return "NULL"
+    col_type_upper = col_type.upper()
+    if col_type_upper in ("BIGINT", "INTEGER", "DOUBLE PRECISION", "REAL", "NUMERIC"):
+        try:
+            if col_type_upper == "BIGINT":
+                return str(int(float(value)))
+            return str(value)
+        except (ValueError, TypeError):
+            return "NULL"
+    # TEXT, DATE, TIMESTAMP, etc. — single-quote and escape
+    escaped = str(value).replace("'", "''")
+    return f"'{escaped}'"
+
+
 def generate_sql_file(table_name, column_types, indexes, csv_file, sql_file):
     col_defs = []
     for col, ctype in column_types.items():
@@ -605,15 +625,39 @@ def generate_sql_file(table_name, column_types, indexes, csv_file, sql_file):
             f"CREATE INDEX IF NOT EXISTS {idx_name} ON {table_name} ({cols_str});"
         )
     index_sql = "\n".join(index_stmts)
-    sql = (
-        f"CREATE TABLE IF NOT EXISTS {table_name} (\n"
-        f"{col_defs_str}\n"
-        f");\n\n"
-        f"{index_sql}\n\n"
-        f"\\COPY {table_name} FROM '{csv_file}' WITH (FORMAT csv, HEADER true);\n"
-    )
-    with open(sql_file, "w") as f:
-        f.write(sql)
+
+    columns = list(column_types.keys())
+    col_types = list(column_types.values())
+    col_names_str = ", ".join(columns)
+
+    with open(sql_file, "w") as out:
+        out.write(f"CREATE TABLE IF NOT EXISTS {table_name} (\n{col_defs_str}\n);\n\n")
+        out.write(f"{index_sql}\n\n")
+
+        # Read CSV and generate batched INSERT statements
+        try:
+            with open(csv_file, "r", newline="") as inp:
+                reader = csv.DictReader(inp)
+                batch = []
+                BATCH_SIZE = 1000
+                for row in reader:
+                    vals = ", ".join(
+                        _sql_escape(row.get(col, ""), ctype)
+                        for col, ctype in zip(columns, col_types)
+                    )
+                    batch.append(f"({vals})")
+                    if len(batch) >= BATCH_SIZE:
+                        out.write(f"INSERT INTO {table_name} ({col_names_str}) VALUES\n")
+                        out.write(",\n".join(batch))
+                        out.write(";\n\n")
+                        batch = []
+                if batch:
+                    out.write(f"INSERT INTO {table_name} ({col_names_str}) VALUES\n")
+                    out.write(",\n".join(batch))
+                    out.write(";\n\n")
+        except FileNotFoundError:
+            out.write(f"-- WARNING: {csv_file} not found, no data inserted\n")
+
     print(f"Wrote {sql_file}")
 
 
